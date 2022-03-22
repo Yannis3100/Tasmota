@@ -25,6 +25,10 @@ bool (* const xlgt_func_ptr[])(uint8_t) PROGMEM = {   // Light driver Function P
 bool (* const xlgt_func_ptr[])(uint8_t) = {   // Light driver Function Pointers
 #endif
 
+#ifdef XLGT_01_01
+  &Xlgt01_01,
+#endif
+
 #ifdef XLGT_01
   &Xlgt01,
 #endif
