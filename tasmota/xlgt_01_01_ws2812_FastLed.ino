@@ -45,111 +45,6 @@ const char kWs2812CommandsFastLed[] PROGMEM = "|"  // No prefix
 void (* const Ws2812CommandFastLed[])(void) PROGMEM = {
   &CmndLedFastLed, &CmndPixelsFastLed, &CmndRotationFastLed, &CmndWidthFastLed, &CmndStepPixelsFastLed };
 
-#include <NeoPixelBus.h>
-
-// See NeoEspDmaMethod.h for available options
-// See NeoEspBitBangMethod.h for available options
-
-// Build `selectedNeoFeatureType` as Neo-Rgb-Feature
-// parametrized as: NEO_FEATURE_NEO+NEO_FEATURE_TYPE+NEO_FEATURE_FEATURE
-#define CONCAT2(A,B)    CONCAT2_(A,B)   // ensures expansion first, see https://stackoverflow.com/questions/3221896/how-can-i-guarantee-full-macro-expansion-of-a-parameter-before-paste
-#define CONCAT2_(A,B)    A ## B
-#define CONCAT3(A,B,C)    CONCAT3_(A,B,C)   // ensures expansion first, see https://stackoverflow.com/questions/3221896/how-can-i-guarantee-full-macro-expansion-of-a-parameter-before-paste
-#define CONCAT3_(A,B,C)    A ## B ## C
-
-#define NEO_FEATURE_NEO       Neo
-#define NEO_FEATURE_FEATURE   Feature
-
-// select the right Neo feature based on USE_WS2812_CTYPE
-// NEO_FEATURE_TYPE can be one of: Rgb (default), Grb, Brg, Rgb, Rgbw, Grbw
-#if   (USE_WS2812_CTYPE == NEO_GRB)
-  #define NEO_FEATURE_TYPE  Grb
-#elif (USE_WS2812_CTYPE == NEO_BRG)
-  #define NEO_FEATURE_TYPE  Brg
-#elif (USE_WS2812_CTYPE == NEO_RBG)
-  #define NEO_FEATURE_TYPE  Rbg
-#elif (USE_WS2812_CTYPE == NEO_RGBW)
-  #define NEO_FEATURE_TYPE  Rgbw
-#elif (USE_WS2812_CTYPE == NEO_GRBW)
-  #define NEO_FEATURE_TYPE  Grbw
-#else
-  #define NEO_FEATURE_TYPE  Rgb
-#endif
-
-// Exception for NEO_HW_P9813
-#if (USE_WS2812_HARDWARE == NEO_HW_P9813)
-  #undef NEO_FEATURE_NEO
-  #undef NEO_FEATURE_TYPE
-  #define NEO_FEATURE_NEO     P9813   // P9813BgrFeature
-  #define NEO_FEATURE_TYPE    Bgr
-  #undef USE_WS2812_DMA
-  #undef USE_WS2812_INVERTED
-#endif  // USE_WS2812_CTYPE
-
-typedef CONCAT3(NEO_FEATURE_NEO,NEO_FEATURE_TYPE,NEO_FEATURE_FEATURE) selectedNeoFeatureType;
-
-// selectedNeoSpeedType is built as Neo+Esp8266+Dma+Inverted+Ws2812x+Method
-// Or NEO_NEO+NEO_CHIP+NEO_PROTO+NEO_INV+NEO_HW+Method
-#define CONCAT6(A,B,C,D,E,F)    CONCAT6_(A,B,C,D,E,F)   // ensures expansion first, see https://stackoverflow.com/questions/3221896/how-can-i-guarantee-full-macro-expansion-of-a-parameter-before-paste
-#define CONCAT6_(A,B,C,D,E,F)    A ## B ## C ## D ## E ## F
-
-#define NEO_NEO         Neo
-
-#ifdef ESP32
-  #define NEO_CHIP      Esp32
-#else
-  #define NEO_CHIP      Esp8266
-#endif
-
-// Proto = DMA or BigBang
-#if defined(USE_WS2812_DMA) && defined(ESP8266)
-  #define NEO_PROTO     Dma
-#elif defined(USE_WS2812_RMT) && defined(ESP32)
-  #define NEO_PROTO     CONCAT2(Rmt,USE_WS2812_RMT)
-#elif defined(USE_WS2812_I2S) && defined(ESP32)
-  #define NEO_PROTO     CONCAT2(I2s,USE_WS2812_I2S)
-#else
-  #define NEO_PROTO     BitBang
-#endif
-
-#ifdef USE_WS2812_INVERTED
-  #define NEO_INV       Inverted
-#else
-  #define NEO_INV
-#endif
-
-#if (USE_WS2812_HARDWARE == NEO_HW_WS2812X)
-  #define NEO_HW        Ws2812x
-#elif (USE_WS2812_HARDWARE == NEO_HW_SK6812)
-  #define NEO_HW        Sk6812
-#elif (USE_WS2812_HARDWARE == NEO_HW_APA106)
-  #define NEO_HW        Apa106
-#else   // USE_WS2812_HARDWARE
-  #define NEO_HW        800Kbps
-#endif  // USE_WS2812_HARDWARE
-
-
-#if (USE_WS2812_HARDWARE == NEO_HW_P9813)
-  #undef NEO_NEO
-  #define NEO_NEO
-  #undef NEO_CHIP
-  #define NEO_CHIP
-  #undef NEO_PROTO
-  #define NEO_PROTO
-  #undef NEO_INV
-  #define NEO_INV
-  #undef NEO_HW
-  #define NEO_HW      P9813       // complete driver is P9813Method
-#endif
-
-#if defined(ESP8266) && defined(USE_WS2812_DMA)
-typedef CONCAT6(NEO_NEO,NEO_CHIP,NEO_PROTO,NEO_INV,NEO_HW,Method)   selectedNeoSpeedType;
-#else // Dma : different naming scheme
-typedef CONCAT6(NEO_NEO,NEO_CHIP,NEO_PROTO,NEO_HW,NEO_INV,Method)   selectedNeoSpeedType;
-#endif
-
-NeoPixelBus<selectedNeoFeatureType, selectedNeoSpeedType> *strip = nullptr;
-
 struct WsColor {
   uint8_t red, green, blue;
 };
@@ -168,11 +63,8 @@ WsColor kRainbow[7] = { 255,0,0, 255,128,0, 255,255,0, 0,255,0, 0,0,255, 128,0,2
 WsColor kFire[3] = { 255,0,0, 255,102,0, 255,192,0 };
 WsColor kStairs[2] = { 0,0,0, 255,255,255 };
 
-#ifdef USE_NETWORK_LIGHT_SCHEMES
-ColorScheme kSchemes[WS2812_SCHEMES_FASTLED -2] = {  // Skip clock scheme and DDP scheme
-#else
+
 ColorScheme kSchemes[WS2812_SCHEMES_FASTLED -1] = {  // Skip clock scheme
-#endif
   kIncandescent, 2,
   kRgb, 3,
   kChristmas, 2,
