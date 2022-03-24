@@ -16,6 +16,8 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#define USE_LIGHT
+#define USE_WS2812
 
 #ifdef USE_LIGHT
 #ifdef USE_WS2812
@@ -44,6 +46,14 @@ const char kWs2812CommandsFastLed[] PROGMEM = "|"  // No prefix
 
 void (* const Ws2812CommandFastLed[])(void) PROGMEM = {
   &CmndLedFastLed, &CmndPixelsFastLed, &CmndRotationFastLed, &CmndWidthFastLed, &CmndStepPixelsFastLed };
+
+#include "FastLED.h"
+
+
+CRGB Leds[WS2812_MAX_LEDS];
+
+
+/*
 
 struct WsColor {
   uint8_t red, green, blue;
@@ -87,13 +97,17 @@ uint8_t kWsRepeat[5] = {
     2,     // Largest
     1 };   // All
 
-struct WS2812 {
+*/
+struct WS2812_FASTLED {
   uint8_t show_next = 1;
   uint8_t scheme_offset = 0;
   bool suspend_update = false;
-} Ws2812;
+} Ws2812FastLed;
 
 /********************************************************************************************/
+
+
+/*
 
 // For some reason map fails to compile so renamed to wsmap
 long wsmap(long x, long in_min, long in_max, long out_min, long out_max) {
@@ -194,6 +208,8 @@ void Ws2812GradientColor(uint32_t schemenr, struct WsColor* mColor, uint32_t ran
  * Compute the color of a pixel at position i using a gradient of the color scheme.
  * This function is used internally by the gradient function.
  */
+
+/*
   ColorScheme scheme = kSchemes[schemenr];
   uint32_t curRange = i / range;
   uint32_t rangeIndex = i % range;
@@ -220,6 +236,8 @@ void Ws2812Gradient(uint32_t schemenr)
  * Display a gradient of colors for the current color scheme.
  *  Repeat is the number of repetitions of the gradient (pick a multiple of 2 for smooth looping of the gradient).
  */
+
+/*
 #if (USE_WS2812_CTYPE > NEO_3LED)
   RgbwColor c;
   c.W = 0;
@@ -261,6 +279,8 @@ void Ws2812Bars(uint32_t schemenr)
  * Display solid bars of color for the current color scheme.
  * Width is the width of each bar in pixels/lights.
  */
+
+/*
 #if (USE_WS2812_CTYPE > NEO_3LED)
   RgbwColor c;
   c.W = 0;
@@ -438,7 +458,7 @@ void Ws2812Clear(void)
 {
   strip->ClearTo(0);
   strip->Show();
-  Ws2812.show_next = 1;
+  Ws2812FastLed.show_next = 1;
 }
 
 void Ws2812SetColor(uint32_t led, uint8_t red, uint8_t green, uint8_t blue, uint8_t white)
@@ -462,9 +482,9 @@ void Ws2812SetColor(uint32_t led, uint8_t red, uint8_t green, uint8_t blue, uint
     }
   }
 
-  if (!Ws2812.suspend_update) {
+  if (!Ws2812FastLed.suspend_update) {
     strip->Show();
-    Ws2812.show_next = 1;
+    Ws2812FastLed.show_next = 1;
   }
 }
 
@@ -495,21 +515,22 @@ char* Ws2812GetColor(uint32_t led, char* scolor)
 /*********************************************************************************************\
  * Public - used by scripter only
 \*********************************************************************************************/
-
+/*
 void Ws2812ForceSuspend (void)
 {
-  Ws2812.suspend_update = true;
+  Ws2812FastLed.suspend_update = true;
 }
 
 void Ws2812ForceUpdate (void)
 {
-  Ws2812.suspend_update = false;
+  Ws2812FastLed.suspend_update = false;
   strip->Show();
-  Ws2812.show_next = 1;
+  Ws2812FastLed.show_next = 1;
 }
 
 /********************************************************************************************/
 
+/*
 bool Ws2812SetChannels(void)
 {
   uint8_t *cur_col = (uint8_t*)XdrvMailbox.data;
@@ -521,7 +542,7 @@ bool Ws2812SetChannels(void)
 
 void Ws2812ShowScheme(void)
 {
-  uint32_t scheme = Settings->light_scheme - Ws2812.scheme_offset;
+  uint32_t scheme = Settings->light_scheme - Ws2812FastLed.scheme_offset;
   
 #ifdef USE_NETWORK_LIGHT_SCHEMES
   if ((scheme != 9) && (ddp_udp_up)) {
@@ -532,9 +553,9 @@ void Ws2812ShowScheme(void)
 #endif
   switch (scheme) {
     case 0:  // Clock
-      if ((1 == TasmotaGlobal.state_250mS) || (Ws2812.show_next)) {
+      if ((1 == TasmotaGlobal.state_250mS) || (Ws2812FastLed.show_next)) {
         Ws2812Clock();
-        Ws2812.show_next = 0;
+        Ws2812FastLed.show_next = 0;
       }
       break;
 #ifdef USE_NETWORK_LIGHT_SCHEMES
@@ -552,27 +573,21 @@ void Ws2812ShowScheme(void)
 					Ws2812Bars(scheme -1);
 				}
       }
-      Ws2812.show_next = 1;
+      Ws2812FastLed.show_next = 1;
       break;
   }
 }
-
+*/
 void Ws2812ModuleSelected(void)
 {
-#if (USE_WS2812_HARDWARE == NEO_HW_P9813)
-  if (PinUsed(GPIO_P9813_CLK) && PinUsed(GPIO_P9813_DAT)) {  // RGB led
-    strip = new NeoPixelBus<selectedNeoFeatureType, selectedNeoSpeedType>(WS2812_MAX_LEDS, Pin(GPIO_P9813_CLK), Pin(GPIO_P9813_DAT));
-#else
-  if (PinUsed(GPIO_WS2812)) {  // RGB led
-    // For DMA, the Pin is ignored as it uses GPIO3 due to DMA hardware use.
-    strip = new NeoPixelBus<selectedNeoFeatureType, selectedNeoSpeedType>(WS2812_MAX_LEDS, Pin(GPIO_WS2812));
-#endif  // NEO_HW_P9813
-    strip->Begin();
+  //FastLED.addLeds<NEOPIXEL,Pin(GPIO_WS2812)>(Leds, WS2812_MAX_LEDS);
+  FastLED.addLeds<WS2812B,5>(Leds, WS2812_MAX_LEDS);
 
-    Ws2812Clear();
+  //Ws2812Clear();
 
-    Ws2812.scheme_offset = Light.max_scheme +1;
-    Light.max_scheme += WS2812_SCHEMES_FASTLED;
+
+  Ws2812FastLed.scheme_offset = Light.max_scheme +1;
+  Light.max_scheme += WS2812_SCHEMES_FASTLED;
 
 #if (USE_WS2812_CTYPE > NEO_3LED)
     TasmotaGlobal.light_type = LT_RGBW;
@@ -580,67 +595,53 @@ void Ws2812ModuleSelected(void)
     TasmotaGlobal.light_type = LT_RGB;
 #endif
     TasmotaGlobal.light_driver = XLGT_01_01;
-  }
+  
 }
 
 /********************************************************************************************/
-
+/*
+*/
 void CmndLedFastLed(void)
 {
-  if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= Settings->light_pixels)) {
-    if (XdrvMailbox.data_len > 0) {
-      char *p;
-      uint16_t idx = XdrvMailbox.index;
-      Ws2812ForceSuspend();
-      for (char *color = strtok_r(XdrvMailbox.data, " ", &p); color; color = strtok_r(nullptr, " ", &p)) {
-        if (LightColorEntry(color, strlen(color))) {
-          Ws2812SetColor(idx, Light.entry_color[0], Light.entry_color[1], Light.entry_color[2], Light.entry_color[3]);
-          idx++;
-          if (idx > Settings->light_pixels) { break; }
-        } else {
-          break;
-        }
-      }
-      Ws2812ForceUpdate();
-    }
-    char scolor[LIGHT_COLOR_SIZE];
-    ResponseCmndIdxChar(Ws2812GetColor(XdrvMailbox.index, scolor));
-  }
 }
 
 void CmndPixelsFastLed(void)
 {
-  if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload <= WS2812_MAX_LEDS)) {
+/*  if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload <= WS2812_MAX_LEDS)) {
     Settings->light_pixels = XdrvMailbox.payload;
     Settings->light_rotation = 0;
     Ws2812Clear();
     Light.update = true;
   }
   ResponseCmndNumber(Settings->light_pixels);
+*/
 }
 
 void CmndStepPixelsFastLed(void)
 {
+/*
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 255)) {
     Settings->light_step_pixels = (XdrvMailbox.payload > WS2812_MAX_LEDS) ? WS2812_MAX_LEDS :  XdrvMailbox.payload;
     Ws2812Clear();
     Light.update = true;
   }
   ResponseCmndNumber(Settings->light_step_pixels);
+*/
 }
 
 
 void CmndRotationFastLed(void)
 {
+/*
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < Settings->light_pixels)) {
     Settings->light_rotation = XdrvMailbox.payload;
   }
   ResponseCmndNumber(Settings->light_rotation);
+*/
 }
-
 void CmndWidthFastLed(void)
 {
-  if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= 4)) {
+/*  if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= 4)) {
     if (1 == XdrvMailbox.index) {
       if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 4)) {
         Settings->light_width = XdrvMailbox.payload;
@@ -653,6 +654,7 @@ void CmndWidthFastLed(void)
       ResponseCmndIdxNumber(Settings->ws_width[XdrvMailbox.index -2]);
     }
   }
+*/
 }
 
 /*********************************************************************************************\
@@ -665,13 +667,13 @@ bool Xlgt01_01(uint8_t function)
 
   switch (function) {
     case FUNC_SET_CHANNELS:
-      result = Ws2812SetChannels();
+//      result = Ws2812SetChannels();
       break;
     case FUNC_SET_SCHEME:
-      Ws2812ShowScheme();
+//      Ws2812ShowScheme();
       break;
     case FUNC_COMMAND:
-      result = DecodeCommand(kWs2812CommandsFastLed, Ws2812CommandFastLed);
+//      result = DecodeCommand(kWs2812CommandsFastLed, Ws2812CommandFastLed);
       break;
     case FUNC_MODULE_INIT:
       Ws2812ModuleSelected();
@@ -679,6 +681,8 @@ bool Xlgt01_01(uint8_t function)
   }
   return result;
 }
+
+
 
 #endif  // USE_WS2812
 #endif  // USE_LIGHT
