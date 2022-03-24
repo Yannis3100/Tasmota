@@ -581,7 +581,7 @@ void Ws2812ShowScheme(void)
 void Ws2812ModuleSelected(void)
 {
   //FastLED.addLeds<NEOPIXEL,Pin(GPIO_WS2812)>(Leds, WS2812_MAX_LEDS);
-  FastLED.addLeds<WS2812B,5>(Leds, WS2812_MAX_LEDS);
+  FastLED.addLeds<WS2812B,14>(Leds, WS2812_MAX_LEDS);
 
   //Ws2812Clear();
 
