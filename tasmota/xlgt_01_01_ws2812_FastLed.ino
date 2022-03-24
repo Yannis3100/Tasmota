@@ -53,7 +53,7 @@ void (* const Ws2812CommandFastLed[])(void) PROGMEM = {
 CRGB Leds[WS2812_MAX_LEDS];
 uint8_t colorIndex[WS2812_MAX_LEDS];
 uint8_t paletteIndex = 0;
-
+uint8_t whichPalette = 0;
 
 DEFINE_GRADIENT_PALETTE( greenblue_gp ) { 
   0,   0,  255, 245,
@@ -90,6 +90,24 @@ DEFINE_GRADIENT_PALETTE (heatmap_gp) {
   200, 255, 255,   0,   //bright yellow
   255, 255, 255, 255    //full white 
 };
+
+DEFINE_GRADIENT_PALETTE( orangepink_gp ) { 
+    0,  255,  100,    0,     //orange
+   90,  255,    0,  255,     //magenta
+  150,  255,  100,    0,     //orange
+  255,  255,  100,    0      //orange
+};
+
+DEFINE_GRADIENT_PALETTE( browngreen_gp ) { 
+    0,    6,  255,    0,     //green
+   71,    0,  255,  153,     //bluegreen
+  122,  200,  200,  200,     //gray
+  181,  110,   61,    6,     //brown
+  255,    6,  255,    0      //green
+};
+
+CRGBPalette16 currentPalette(greenblue_gp);
+CRGBPalette16 targetPalette(orangepink_gp);
 
 CRGBPalette16 greenblue = greenblue_gp;
 CRGBPalette16 purpule = purple_p;
@@ -191,6 +209,41 @@ void Ws2812ShowScheme(void)
         paletteIndex++;
       }
       FastLED.show();
+      break;
+
+    case 3: // Pattern SCHEME 8
+        // Color each pixel from the palette using the index from colorIndex[]
+        for (int i = 0; i < nb_pixels; i++) {
+          Leds[i] = ColorFromPalette(currentPalette, colorIndex[i]);
+        }
+
+        nblendPaletteTowardPalette( currentPalette, targetPalette, 10 );
+
+        switch (whichPalette) {
+          case 0:
+            targetPalette = orangepink_gp;
+            break;
+          case 1:
+            targetPalette = browngreen_gp;
+            break;
+          case 2:
+            targetPalette = greenblue_gp;
+            break;
+        }
+
+        EVERY_N_SECONDS(5) {
+          whichPalette++;
+          if (whichPalette > 2) 
+            whichPalette = 0;
+        }
+        
+        EVERY_N_MILLISECONDS(10){
+          for (int i = 0; i < nb_pixels; i++) {
+            colorIndex[i]++;
+          }
+        }
+
+        FastLED.show();
       break;
 
     default:
