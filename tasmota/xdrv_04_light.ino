@@ -3299,7 +3299,9 @@ bool Xdrv04(uint8_t function)
             LightSetOutputs(Light.fade_cur_10);
           }
         }
-        XlgtCall(FUNC_SET_SCHEME);
+        if( Light.power ){
+          XlgtCall(FUNC_SET_SCHEME);
+        }
         break;
       case FUNC_EVERY_50_MSECOND:
         LightAnimate();
