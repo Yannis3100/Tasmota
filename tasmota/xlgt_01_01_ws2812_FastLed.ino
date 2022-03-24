@@ -453,14 +453,19 @@ void Ws2812DDP(void)
   }
 }
 #endif
+*/
 
 void Ws2812Clear(void)
 {
+/*
   strip->ClearTo(0);
   strip->Show();
   Ws2812FastLed.show_next = 1;
+*/
 }
 
+
+/*
 void Ws2812SetColor(uint32_t led, uint8_t red, uint8_t green, uint8_t blue, uint8_t white)
 {
 #if (USE_WS2812_CTYPE > NEO_3LED)
@@ -583,7 +588,7 @@ void Ws2812ModuleSelected(void)
   //FastLED.addLeds<NEOPIXEL,Pin(GPIO_WS2812)>(Leds, WS2812_MAX_LEDS);
   FastLED.addLeds<WS2812B,14>(Leds, WS2812_MAX_LEDS);
 
-  //Ws2812Clear();
+  Ws2812Clear();
 
 
   Ws2812FastLed.scheme_offset = Light.max_scheme +1;
@@ -607,14 +612,15 @@ void CmndLedFastLed(void)
 
 void CmndPixelsFastLed(void)
 {
-/*  if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload <= WS2812_MAX_LEDS)) {
+  if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload <= WS2812_MAX_LEDS)) {
     Settings->light_pixels = XdrvMailbox.payload;
     Settings->light_rotation = 0;
     Ws2812Clear();
     Light.update = true;
   }
+
   ResponseCmndNumber(Settings->light_pixels);
-*/
+
 }
 
 void CmndStepPixelsFastLed(void)
@@ -673,7 +679,7 @@ bool Xlgt01_01(uint8_t function)
 //      Ws2812ShowScheme();
       break;
     case FUNC_COMMAND:
-//      result = DecodeCommand(kWs2812CommandsFastLed, Ws2812CommandFastLed);
+      result = DecodeCommand(kWs2812CommandsFastLed, Ws2812CommandFastLed);
       break;
     case FUNC_MODULE_INIT:
       Ws2812ModuleSelected();
