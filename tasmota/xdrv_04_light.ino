@@ -1825,7 +1825,7 @@ void LightAnimate(void)
         break;
 #endif
       default:
-        XlgtCall(FUNC_SET_SCHEME);
+        //XlgtCall(FUNC_SET_SCHEME);
         break;
     }
 
@@ -3298,6 +3298,9 @@ bool Xdrv04(uint8_t function)
           if (LightApplyFade()) {
             LightSetOutputs(Light.fade_cur_10);
           }
+        }
+        if( Light.power ){
+          XlgtCall(FUNC_SET_SCHEME);
         }
         break;
       case FUNC_EVERY_50_MSECOND:
