@@ -55,9 +55,9 @@ uint8_t colorIndex[WS2812_MAX_LEDS];
 uint8_t paletteIndex = 0;
 uint8_t whichPalette = 0;
 
-uint8_t sinBeat;
-uint8_t sinBeat2;
-uint8_t sinBeat3;
+uint16_t sinBeat;
+uint16_t sinBeat2;
+uint16_t sinBeat3;
 
 
 DEFINE_GRADIENT_PALETTE( greenblue_gp ) { 
@@ -124,6 +124,12 @@ struct WS2812_FASTLED {
   bool suspend_update = false;
 } Ws2812FastLed;
 
+
+// DEBUG
+unsigned long LogTime=0;
+unsigned long LoopTimeMax=0;
+
+
 /********************************************************************************************/
 
 void Ws2812Clear(void)
@@ -182,7 +188,15 @@ void Ws2812ShowScheme(void)
 {
   uint32_t scheme = Settings->light_scheme - Ws2812FastLed.scheme_offset;
   uint16_t nb_pixels = Settings->light_pixels;
+  EVERY_N_SECONDS(5){
+    Serial.print("Loop Time : ");
+    Serial.println(LoopTimeMax);
+    LoopTimeMax=0;
+  }
+  if (millis()-LogTime > LoopTimeMax)
+    LoopTimeMax = millis()-LogTime;
 
+  LogTime = millis();
   switch (scheme) {
     case 0:  // Pattern SCHEME 5
       // Color each pixel from the palette using the index from colorIndex[]
@@ -252,9 +266,9 @@ void Ws2812ShowScheme(void)
       break;
 
     case 4: // Phase Beat - Pattern SCHEME 9
-      sinBeat   = beatsin8(30, 0, nb_pixels - 1, 0, 0);
-      sinBeat2  = beatsin8(30, 0, nb_pixels - 1, 0, 85);
-      sinBeat3  = beatsin8(30, 0, nb_pixels - 1, 0, 170);
+      sinBeat   = beatsin16(30, 0, nb_pixels - 1, 0, 0);
+      sinBeat2  = beatsin16(30, 0, nb_pixels - 1, 0, 21845);
+      sinBeat3  = beatsin16(30, 0, nb_pixels - 1, 0, 43690);
 
       // If you notice that your pattern is missing out certain LEDs, you
       // will need to use the higher resolution beatsin16 instead. In this
@@ -279,7 +293,8 @@ void Ws2812ShowScheme(void)
 void Ws2812ModuleSelected(void)
 {
   //FastLED.addLeds<NEOPIXEL,Pin(GPIO_WS2812)>(Leds, WS2812_MAX_LEDS);
-  FastLED.addLeds<NEOPIXEL,14>(Leds, WS2812_MAX_LEDS);
+  //FastLED.addLeds<WS2812,14>(Leds, WS2812_MAX_LEDS);
+  FastLED.addLeds<WS2812,14,BRG>(Leds,WS2812_MAX_LEDS);
 
   Ws2812Clear();
   FastLED.setBrightness(50);
