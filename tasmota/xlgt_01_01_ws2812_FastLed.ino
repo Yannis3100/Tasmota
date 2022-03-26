@@ -128,6 +128,8 @@ struct WS2812_FASTLED {
 // DEBUG
 unsigned long LogTime=0;
 unsigned long LoopTimeMax=0;
+unsigned long LoopTimeAvg=0;
+unsigned long LoopCnt=0;
 
 
 /********************************************************************************************/
@@ -190,13 +192,20 @@ void Ws2812ShowScheme(void)
   uint16_t nb_pixels = Settings->light_pixels;
   EVERY_N_SECONDS(5){
     Serial.print("Loop Time : ");
-    Serial.println(LoopTimeMax);
+    Serial.println(LoopTimeAvg);
     LoopTimeMax=0;
+    LoopTimeAvg = 0;
+    LoopCnt = 0;
   }
   if (millis()-LogTime > LoopTimeMax)
     LoopTimeMax = millis()-LogTime;
 
+  if ( LoopCnt )
+    LoopTimeAvg = ( LoopTimeAvg*LoopCnt + (millis()-LogTime) ) /(LoopCnt +1 );
+
   LogTime = millis();
+  LoopCnt++;
+
   switch (scheme) {
     case 0:  // Pattern SCHEME 5
       // Color each pixel from the palette using the index from colorIndex[]
@@ -222,7 +231,7 @@ void Ws2812ShowScheme(void)
       FastLED.show();
       break;
     
-    case 2: // Pattern SCHEME 7
+    case 2: // Pattern SCHEME 7 - HeatMap
       fill_palette(Leds, nb_pixels, paletteIndex, 255 / nb_pixels, heatmap, 255, LINEARBLEND);
       EVERY_N_MILLISECONDS(10){
         paletteIndex++;
@@ -297,7 +306,7 @@ void Ws2812ModuleSelected(void)
   FastLED.addLeds<WS2812,14,BRG>(Leds,WS2812_MAX_LEDS);
 
   Ws2812Clear();
-  FastLED.setBrightness(50);
+  FastLED.setBrightness(255);
 
   //Fill the colorIndex array with random numbers
   for (int i = 0; i < WS2812_MAX_LEDS; i++) {
