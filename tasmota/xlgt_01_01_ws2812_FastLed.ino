@@ -191,11 +191,12 @@ void Ws2812ShowScheme(void)
   uint32_t scheme = Settings->light_scheme - Ws2812FastLed.scheme_offset;
   uint16_t nb_pixels = Settings->light_pixels;
   EVERY_N_SECONDS(5){
-    Serial.print("Loop Time : ");
-    Serial.println(LoopTimeAvg);
+    AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_DEBUG "LoopTimeAvg %d, LoopTimeMax %d"), LoopTimeAvg, LoopTimeMax);
+
     LoopTimeMax=0;
     LoopTimeAvg = 0;
     LoopCnt = 0;
+    
   }
   if (millis()-LogTime > LoopTimeMax)
     LoopTimeMax = millis()-LogTime;
@@ -275,9 +276,9 @@ void Ws2812ShowScheme(void)
       break;
 
     case 4: // Phase Beat - Pattern SCHEME 9
-      sinBeat   = beatsin16(30, 0, nb_pixels - 1, 0, 0);
-      sinBeat2  = beatsin16(30, 0, nb_pixels - 1, 0, 21845);
-      sinBeat3  = beatsin16(30, 0, nb_pixels - 1, 0, 43690);
+      sinBeat   = beatsin16(15, 0, nb_pixels - 1, 0, 0);
+      sinBeat2  = beatsin16(15, 0, nb_pixels - 1, 0, 21845);
+      sinBeat3  = beatsin16(15, 0, nb_pixels - 1, 0, 43690);
 
       // If you notice that your pattern is missing out certain LEDs, you
       // will need to use the higher resolution beatsin16 instead. In this
