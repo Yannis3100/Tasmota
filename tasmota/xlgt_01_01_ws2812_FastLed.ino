@@ -357,20 +357,14 @@ void CmndRotationFastLed(void)
 
 void CmndWidthFastLed(void)
 {
-/*  if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= 4)) {
+  if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= 4)) {
     if (1 == XdrvMailbox.index) {
-      if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 4)) {
+      if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 30)) {
         Settings->light_width = XdrvMailbox.payload;
       }
       ResponseCmndNumber(Settings->light_width);
-    } else {
-      if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < 32)) {
-        Settings->ws_width[XdrvMailbox.index -2] = XdrvMailbox.payload;
-      }
-      ResponseCmndIdxNumber(Settings->ws_width[XdrvMailbox.index -2]);
-    }
+    } 
   }
-*/
 }
 
 /*********************************************************************************************\
