@@ -191,6 +191,8 @@ void Ws2812ShowScheme(void)
 {
   uint32_t scheme = Settings->light_scheme - Ws2812FastLed.scheme_offset;
   uint16_t nb_pixels = Settings->light_pixels;
+  uint8_t Bpm = Settings->light_width;
+
   EVERY_N_SECONDS(5){
     AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_DEBUG "CPU freq %dMHz LoopTimeAvg %d, LoopTimeMax %d, LighFcnDur %d"), ESP.getCpuFreqMHz(), LoopTimeAvg, LoopTimeMax, LightFcnDur);
 
@@ -279,10 +281,10 @@ void Ws2812ShowScheme(void)
       break;
 
     case 4: // Phase Beat - Pattern SCHEME 9
-      #define BPM 4
-      sinBeat   = beatsin16(BPM, 0, nb_pixels - 1, 0, 0);
-      sinBeat2  = beatsin16(BPM, 0, nb_pixels - 1, 0, 21845);
-      sinBeat3  = beatsin16(BPM, 0, nb_pixels - 1, 0, 43690);
+
+      sinBeat   = beatsin16(Bpm, 0, nb_pixels - 1, 0, 0);
+      sinBeat2  = beatsin16(Bpm, 0, nb_pixels - 1, 0, 21845);
+      sinBeat3  = beatsin16(Bpm, 0, nb_pixels - 1, 0, 43690);
 
       // If you notice that your pattern is missing out certain LEDs, you
       // will need to use the higher resolution beatsin16 instead. In this
