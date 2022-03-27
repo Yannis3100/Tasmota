@@ -129,6 +129,7 @@ struct WS2812_FASTLED {
 unsigned long LogTime=0;
 unsigned long LoopTimeMax=0;
 unsigned long LoopTimeAvg=0;
+unsigned long LightFcnDur=0;
 unsigned long LoopCnt=0;
 
 
@@ -191,13 +192,15 @@ void Ws2812ShowScheme(void)
   uint32_t scheme = Settings->light_scheme - Ws2812FastLed.scheme_offset;
   uint16_t nb_pixels = Settings->light_pixels;
   EVERY_N_SECONDS(5){
-    AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_DEBUG "LoopTimeAvg %d, LoopTimeMax %d"), LoopTimeAvg, LoopTimeMax);
+    AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_DEBUG "CPU freq %dMHz LoopTimeAvg %d, LoopTimeMax %d, LighFcnDur %d"), ESP.getCpuFreqMHz(), LoopTimeAvg, LoopTimeMax, LightFcnDur);
 
     LoopTimeMax=0;
     LoopTimeAvg = 0;
+    LightFcnDur = 0;
     LoopCnt = 0;
     
   }
+  LightFcnDur = millis();
   if (millis()-LogTime > LoopTimeMax)
     LoopTimeMax = millis()-LogTime;
 
@@ -276,9 +279,10 @@ void Ws2812ShowScheme(void)
       break;
 
     case 4: // Phase Beat - Pattern SCHEME 9
-      sinBeat   = beatsin16(15, 0, nb_pixels - 1, 0, 0);
-      sinBeat2  = beatsin16(15, 0, nb_pixels - 1, 0, 21845);
-      sinBeat3  = beatsin16(15, 0, nb_pixels - 1, 0, 43690);
+      #define BPM 4
+      sinBeat   = beatsin16(BPM, 0, nb_pixels - 1, 0, 0);
+      sinBeat2  = beatsin16(BPM, 0, nb_pixels - 1, 0, 21845);
+      sinBeat3  = beatsin16(BPM, 0, nb_pixels - 1, 0, 43690);
 
       // If you notice that your pattern is missing out certain LEDs, you
       // will need to use the higher resolution beatsin16 instead. In this
@@ -298,6 +302,8 @@ void Ws2812ShowScheme(void)
     default:
       break;
   }
+
+  LightFcnDur = millis() - LightFcnDur;
 }
 
 void Ws2812ModuleSelected(void)
