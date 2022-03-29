@@ -60,7 +60,7 @@ uint8_t colorIndex[WS2812_MAX_LEDS];
 uint8_t paletteIndex = 0;
 uint8_t whichPalette = 0;
 
-uint16_t sinBeat;
+uint16_t sinBeat1;
 uint16_t sinBeat2;
 uint16_t sinBeat3;
 
@@ -116,12 +116,31 @@ DEFINE_GRADIENT_PALETTE( browngreen_gp ) {
   255,    6,  255,    0      //green
 };
 
+DEFINE_GRADIENT_PALETTE( ukraine_gp ) {
+    0,  255,  255,    0,     //Yellow
+   76,  255,  255,    0,     //Yellow
+  178,    0,    0,    255,    //Blue
+  255,    0,    0,    255    //Blue
+};
+
+DEFINE_GRADIENT_PALETTE( france_gp ) {
+    0,    0,    0,    255,    //Blue
+   51,    0,    0,    255,    //Blue
+  128,  255,  255,    255,    //White
+  204,  255,    0,    0,       //Red
+  255,  255,    0,    0       //Red
+};
+
+
 CRGBPalette16 currentPalette(greenblue_gp);
 CRGBPalette16 targetPalette(orangepink_gp);
 
 CRGBPalette16 greenblue = greenblue_gp;
 CRGBPalette16 purpule = purple_p;
 CRGBPalette16 heatmap = heatmap_gp;
+CRGBPalette16 ukraine = ukraine_gp;
+CRGBPalette16 france = france_gp;
+
 
 struct WS2812_FASTLED {
   uint8_t show_next = 1;
@@ -290,7 +309,7 @@ void Ws2812ShowScheme(void)
 
     case 4: // Phase Beat - Pattern SCHEME 9
 
-      sinBeat   = beatsin16(bpm, 0, (nb_led_pattern) - 1, 0, 0);
+      sinBeat1   = beatsin16(bpm, 0, (nb_led_pattern) - 1, 0, 0);
       sinBeat2  = beatsin16(bpm, 0, (nb_led_pattern) - 1, 0, 21845);
       sinBeat3  = beatsin16(bpm, 0, (nb_led_pattern) - 1, 0, 43690);
 
@@ -303,7 +322,7 @@ void Ws2812ShowScheme(void)
 
       for( uint8_t i =0; i < nb_step ; i++)
       {
-        Leds[sinBeat+i*nb_led_pattern]   = CRGB::Blue;
+        Leds[sinBeat1+i*nb_led_pattern]   = CRGB::Blue;
         Leds[sinBeat2+i*nb_led_pattern]  = CRGB::Red;
         Leds[sinBeat3+i*nb_led_pattern]  = CRGB::White;
 
@@ -312,6 +331,31 @@ void Ws2812ShowScheme(void)
       fadeToBlackBy(Leds, nb_pixels, 10);
       FastLED.show();
       break;
+
+    case 5:
+        sinBeat1 = beatsin16(bpm, 0, 255);
+        sinBeat2 = beatsin16(bpm*2/3, 0, 255);
+        fill_rainbow(Leds, nb_pixels, (sinBeat1+sinBeat2)/2, 8);
+    
+        FastLED.show();
+      break;
+
+    case 6:
+      sinBeat1 = beatsin16(bpm, 0, 255);
+      sinBeat2 = beatsin16(bpm*2/3, 0, 255);
+      fill_palette(Leds, nb_pixels, (sinBeat1 + sinBeat2) / 2, nb_pixels/nb_led_pattern, ukraine, 255, LINEARBLEND);
+
+      FastLED.show();
+      break;
+
+    case 7:
+      sinBeat1 = beatsin16(bpm, 0, 255);
+      sinBeat2 = beatsin16(bpm*2/3, 0, 255);
+      fill_palette(Leds, nb_pixels, (sinBeat1 + sinBeat2) / 2, nb_pixels/nb_led_pattern, france, 255, LINEARBLEND);
+
+      FastLED.show();
+      break;
+
 
     default:
       break;
