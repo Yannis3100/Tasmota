@@ -390,6 +390,9 @@ bool Xlgt01_01(uint8_t function)
     case FUNC_MODULE_INIT:
       Ws2812ModuleSelected();
       break;
+    case FUNC_EVERY_50_MSECOND:
+      Ws2812Clear();
+      break;
   }
   return result;
 }
