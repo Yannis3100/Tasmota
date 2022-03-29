@@ -196,9 +196,10 @@ void Ws2812ShowScheme(void)
 {
   uint32_t scheme = Settings->light_scheme - Ws2812FastLed.scheme_offset;
   uint16_t nb_pixels = Settings->light_pixels;
-  uint8_t Bpm = BPM;
-  uint8_t NbStep = NB_STEP;
-  uint8_t NbColor = NB_COLOR;
+  uint8_t bpm = BPM;
+  uint8_t nb_step = NB_STEP;
+  uint8_t nb_color = NB_COLOR;
+  uint8_t nb_led_pattern = nb_pixels / nb_step;
 
   EVERY_N_SECONDS(5){
     AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_DEBUG "CPU freq %dMHz LoopTimeAvg %d, LoopTimeMax %d, LighFcnDur %d"), ESP.getCpuFreqMHz(), LoopTimeAvg, LoopTimeMax, LightFcnDur);
@@ -289,9 +290,9 @@ void Ws2812ShowScheme(void)
 
     case 4: // Phase Beat - Pattern SCHEME 9
 
-      sinBeat   = beatsin16(Bpm, 0, nb_pixels - 1, 0, 0);
-      sinBeat2  = beatsin16(Bpm, 0, nb_pixels - 1, 0, 21845);
-      sinBeat3  = beatsin16(Bpm, 0, nb_pixels - 1, 0, 43690);
+      sinBeat   = beatsin16(bpm, 0, (nb_led_pattern) - 1, 0, 0);
+      sinBeat2  = beatsin16(bpm, 0, (nb_led_pattern) - 1, 0, 21845);
+      sinBeat3  = beatsin16(bpm, 0, (nb_led_pattern) - 1, 0, 43690);
 
       // If you notice that your pattern is missing out certain LEDs, you
       // will need to use the higher resolution beatsin16 instead. In this
@@ -300,10 +301,14 @@ void Ws2812ShowScheme(void)
       // uint16_t sinBeat2  = beatsin16(30, 0, NUM_LEDS - 1, 0, 21845);
       // uint16_t sinBeat3  = beatsin16(30, 0, NUM_LEDS - 1, 0, 43690);
 
-      Leds[sinBeat]   = CRGB::Blue;
-      Leds[sinBeat2]  = CRGB::Red;
-      Leds[sinBeat3]  = CRGB::White;
-      
+      for( uint8_t i =0; i < nb_step ; i++)
+      {
+        Leds[sinBeat+i*nb_led_pattern]   = CRGB::Blue;
+        Leds[sinBeat2+i*nb_led_pattern]  = CRGB::Red;
+        Leds[sinBeat3+i*nb_led_pattern]  = CRGB::White;
+
+      }
+     
       fadeToBlackBy(Leds, nb_pixels, 10);
       FastLED.show();
       break;
@@ -375,7 +380,7 @@ void CmndWidthFastLed(void)
       ResponseCmndNumber(Settings->light_width);
     } 
     else {
-      if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < 32)) {
+      if ((XdrvMailbox.payload >= 1) && (XdrvMailbox.payload < 32)) {
         Settings->ws_width[XdrvMailbox.index -2] = XdrvMailbox.payload;
       }
       ResponseCmndIdxNumber(Settings->ws_width[XdrvMailbox.index -2]);
