@@ -41,6 +41,11 @@
 
 const uint8_t WS2812_SCHEMES_FASTLED = 9;      // Number of WS2812 schemes
 
+#define BPM     Settings->light_width
+#define NB_STEP  Settings->ws_width[0]
+#define NB_COLOR  Settings->ws_width[1]
+#define PARAM3  Settings->ws_width[2]
+
 const char kWs2812CommandsFastLed[] PROGMEM = "|"  // No prefix
  D_CMND_PIXELS "|" D_CMND_ROTATION "|" D_CMND_WIDTH ;
 
@@ -191,7 +196,9 @@ void Ws2812ShowScheme(void)
 {
   uint32_t scheme = Settings->light_scheme - Ws2812FastLed.scheme_offset;
   uint16_t nb_pixels = Settings->light_pixels;
-  uint8_t Bpm = Settings->light_width;
+  uint8_t Bpm = BPM;
+  uint8_t NbStep = NB_STEP;
+  uint8_t NbColor = NB_COLOR;
 
   EVERY_N_SECONDS(5){
     AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_DEBUG "CPU freq %dMHz LoopTimeAvg %d, LoopTimeMax %d, LighFcnDur %d"), ESP.getCpuFreqMHz(), LoopTimeAvg, LoopTimeMax, LightFcnDur);
@@ -362,11 +369,22 @@ void CmndWidthFastLed(void)
   if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= 4)) {
     if (1 == XdrvMailbox.index) {
       if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 30)) {
+        // used for BPM settings
         Settings->light_width = XdrvMailbox.payload;
       }
       ResponseCmndNumber(Settings->light_width);
     } 
+    else {
+      if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < 32)) {
+        Settings->ws_width[XdrvMailbox.index -2] = XdrvMailbox.payload;
+      }
+      ResponseCmndIdxNumber(Settings->ws_width[XdrvMailbox.index -2]);
+    } 
   }
+
+
+
+
 }
 
 /*********************************************************************************************\
