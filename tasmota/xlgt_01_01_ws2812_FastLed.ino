@@ -131,6 +131,13 @@ DEFINE_GRADIENT_PALETTE( france_gp ) {
   255,  255,    0,    0       //Red
 };
 
+DEFINE_GRADIENT_PALETTE( stade_toulousain_gp ) {
+    0,  255,    0,    0,    //Red
+  115,  255,    0,    0,    //Red
+  140,    0,    0,    0,       //Black
+  255,    0,    0,    0       //Black
+};
+
 
 CRGBPalette16 currentPalette(greenblue_gp);
 CRGBPalette16 targetPalette(orangepink_gp);
@@ -140,6 +147,7 @@ CRGBPalette16 purpule = purple_p;
 CRGBPalette16 heatmap = heatmap_gp;
 CRGBPalette16 ukraine = ukraine_gp;
 CRGBPalette16 france = france_gp;
+CRGBPalette16 stade_toulousain = stade_toulousain_gp;
 
 
 struct WS2812_FASTLED {
@@ -352,6 +360,15 @@ void Ws2812ShowScheme(void)
       sinBeat1 = beatsin16(bpm, 0, 255);
       sinBeat2 = beatsin16(bpm*2/3, 0, 255);
       fill_palette(Leds, nb_pixels, (sinBeat1 + sinBeat2) / 2, nb_pixels/nb_led_pattern, france, 255, LINEARBLEND);
+
+      FastLED.show();
+      break;
+
+
+    case 8:
+      sinBeat1 = beatsin16(bpm, 0, 255);
+      sinBeat2 = beatsin16(bpm*2/3, 0, 255);
+      fill_palette(Leds, nb_pixels, (sinBeat1 + sinBeat2) / 2, nb_pixels/nb_led_pattern, stade_toulousain, 255, LINEARBLEND);
 
       FastLED.show();
       break;
