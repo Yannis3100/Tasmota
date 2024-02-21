@@ -3430,6 +3430,10 @@ bool Xdrv04(uint32_t function)
         break;
       case FUNC_EVERY_50_MSECOND:
         LightAnimate();
+        if( !Light.power ){
+          XlgtCall(FUNC_EVERY_50_MSECOND);
+        }
+
         break;
 #ifdef USE_DEVICE_GROUPS
       case FUNC_DEVICE_GROUP_ITEM:
