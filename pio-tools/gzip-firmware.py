@@ -4,6 +4,7 @@ import os
 import shutil
 import tasmotapiolib
 import gzip
+from colorama import Fore, Back, Style
 
 def map_gzip(source, target, env):
     # create string with location and file names based on variant
@@ -30,7 +31,10 @@ if not tasmotapiolib.is_env_set(tasmotapiolib.DISABLE_MAP_GZ, env):
     env.AddPostAction("$BUILD_DIR/${PROGNAME}.bin", [map_gzip])
 
 if tasmotapiolib.is_env_set(tasmotapiolib.ENABLE_ESP32_GZ, env) or env["PIOPLATFORM"] != "espressif32":
-    from zopfli.gzip import compress
+    import time
+
+    gzip_level = int(env['ENV'].get('GZIP_LEVEL', 10))
+
     def bin_gzip(source, target, env):
         # create string with location and file names based on variant
         bin_file = tasmotapiolib.get_final_bin_path(env)
@@ -43,24 +47,25 @@ if tasmotapiolib.is_env_set(tasmotapiolib.ENABLE_ESP32_GZ, env) or env["PIOPLATF
         # write gzip firmware file
         with open(bin_file, "rb") as fp:
             with open(gzip_file, "wb") as f:
-                zopfli_gz = compress(fp.read())
-                f.write(zopfli_gz)
+                time_start = time.time()
+                gz = tasmotapiolib.compress(fp.read(), gzip_level)
+                time_delta = time.time() - time_start
+                f.write(gz)
 
         ORG_FIRMWARE_SIZE = bin_file.stat().st_size
         GZ_FIRMWARE_SIZE = gzip_file.stat().st_size
 
         if ORG_FIRMWARE_SIZE > 995326 and env["PIOPLATFORM"] != "espressif32":
-            print(
-                "\u001b[31;1m!!! Tasmota firmware size is too big with {} bytes. Max size is 995326 bytes !!! \u001b[0m".format(
+            print(Fore.RED + "!!! Tasmota firmware size is too big with {} bytes. Max size is 995326 bytes !!! ".format(
                     ORG_FIRMWARE_SIZE
                 )
             )
         else:
-            print(
-                "Compression reduced firmware size to {:.0f}% (was {} bytes, now {} bytes)".format(
+            print(Fore.GREEN + "Compression reduced firmware size to {:.0f}% (was {} bytes, now {} bytes, took {:.3f} seconds)".format(
                     (GZ_FIRMWARE_SIZE / ORG_FIRMWARE_SIZE) * 100,
                     ORG_FIRMWARE_SIZE,
                     GZ_FIRMWARE_SIZE,
+                    time_delta,
                 )
             )
 

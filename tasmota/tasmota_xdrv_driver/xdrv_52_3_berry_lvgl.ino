@@ -34,6 +34,9 @@
 #include "be_mapping.h"
 #include "be_ctypes.h"
 #include "lv_berry.h"
+#ifdef USE_LVGL_HASPMOTA
+  #include "be_lv_haspmota.h"
+#endif // USE_LVGL_HASPMOTA
 
 // Berry easy logging
 extern "C" {
@@ -47,6 +50,8 @@ extern bool lvgl_started(void);
 extern void lvgl_set_screenshot_file(File * file);
 extern void lvgl_reset_screenshot_file(void);
 File * lvgl_get_screenshot_file(void);
+extern void lv_set_paint_cb(void* cb);
+extern void* lv_get_paint_cb(void);
 
 /********************************************************************
  * Structures used by LVGL_Berry
@@ -138,7 +143,7 @@ extern "C" {
       // lv_ft_info_t info = {};
       const char * name = be_tostring(vm, 1);
       int32_t weight = be_toint(vm, 2);
-      int32_t style = be_toint(vm, 3);
+      lv_freetype_font_style_t style = (lv_freetype_font_style_t) be_toint(vm, 3);
       lv_font_t * font = lv_freetype_font_create(name, LV_FREETYPE_FONT_RENDER_MODE_BITMAP, weight, style);
       // lv_ft_font_init(&info);
       // lv_font_t * font = info.font;
@@ -182,11 +187,17 @@ extern "C" {
   #if LV_FONT_MONTSERRAT_10
     { 10, &lv_font_montserrat_10 },
   #endif
+  #if LV_FONT_MONTSERRAT_TASMOTA_10
+    { 10, &lv_font_montserrat_tasmota_10 },
+  #endif
   #if LV_FONT_MONTSERRAT_12
     { 12, &lv_font_montserrat_12 },
   #endif
   #if LV_FONT_MONTSERRAT_14
     { 14, &lv_font_montserrat_14 },
+  #endif
+  #if LV_FONT_MONTSERRAT_TASMOTA_14
+    { 14, &lv_font_montserrat_tasmota_14 },
   #endif
   #if LV_FONT_MONTSERRAT_16
     { 16, &lv_font_montserrat_16 },
@@ -196,6 +207,9 @@ extern "C" {
   #endif
   #if LV_FONT_MONTSERRAT_20
     { 20, &lv_font_montserrat_20 },
+  #endif
+  #if LV_FONT_MONTSERRAT_TASMOTA_20
+    { 20, &lv_font_montserrat_tasmota_20 },
   #endif
   #if LV_FONT_MONTSERRAT_22
     { 22, &lv_font_montserrat_22 },
@@ -208,6 +222,9 @@ extern "C" {
   #endif
   #if LV_FONT_MONTSERRAT_28
     { 28, &lv_font_montserrat_28 },
+  #endif
+  #if LV_FONT_MONTSERRAT_TASMOTA_28
+    { 28, &lv_font_montserrat_tasmota_28 },
   #endif
   #if LV_FONT_MONTSERRAT_28_COMPRESSED
     { 28, &lv_font_montserrat_28_compressed, },
@@ -272,6 +289,72 @@ extern "C" {
     { 0, nullptr}
   };
 
+  // icons Font for sizes not covered by montserrat
+  // if montserrat is defined, use it, else import icons font
+  const lv_font_table_t lv_icons_fonts[] = {
+#if LV_FONT_MONTSERRAT_TASMOTA_10
+    { 10, &lv_font_montserrat_tasmota_10 },
+#elif defined(FONT_ICONS_10)
+    { 10, &lv_font_icons_10 },
+#endif
+
+#if LV_FONT_MONTSERRAT_TASMOTA_12
+    { 12, &lv_font_montserrat_tasmota_12 },
+#elif defined(FONT_ICONS_12)
+    { 12, &lv_font_icons_12 },
+#endif
+
+#if LV_FONT_MONTSERRAT_TASMOTA_14
+    { 14, &lv_font_montserrat_tasmota_14 },
+#elif defined(FONT_ICONS_14)
+    { 14, &lv_font_icons_14 },
+#endif
+
+#if LV_FONT_MONTSERRAT_TASMOTA_16
+    { 16, &lv_font_montserrat_tasmota_16 },
+#elif defined(FONT_ICONS_16)
+    { 16, &lv_font_icons_16 },
+#endif
+
+#if LV_FONT_MONTSERRAT_TASMOTA_18
+    { 18, &lv_font_montserrat_tasmota_18 },
+#elif defined(FONT_ICONS_18)
+    { 18, &lv_font_icons_18 },
+#endif
+
+#if LV_FONT_MONTSERRAT_TASMOTA_20
+    { 20, &lv_font_montserrat_tasmota_20 },
+#elif defined(FONT_ICONS_20)
+    { 20, &lv_font_icons_20 },
+#endif
+
+#if LV_FONT_MONTSERRAT_TASMOTA_22
+    { 22, &lv_font_montserrat_tasmota_22 },
+#elif defined(FONT_ICONS_22)
+    { 22, &lv_font_icons_22 },
+#endif
+
+#if LV_FONT_MONTSERRAT_TASMOTA_24
+    { 24, &lv_font_montserrat_tasmota_24 },
+#elif defined(FONT_ICONS_24)
+    { 24, &lv_font_icons_24 },
+#endif
+
+#if LV_FONT_MONTSERRAT_TASMOTA_28
+    { 28, &lv_font_montserrat_tasmota_28 },
+#elif defined(FONT_ICONS_28)
+    { 28, &lv_font_icons_28 },
+#endif
+
+    { 0, nullptr}
+  };
+
+  // // typicons Font
+  // const lv_font_table_t lv_typicons_fonts[] = {
+  //   { 24, &typicons24 },
+  //   { 0, nullptr}
+  // };
+
   // robotocondensed-latin1
   const lv_font_table_t lv_robotocondensed_fonts[] = {
 #if ROBOTOCONDENSED_REGULAR_12_LATIN1
@@ -318,12 +401,14 @@ extern "C" {
 
   // register all included fonts
   const lv_font_names_t lv_embedded_fonts[] = {
+    { "icons", lv_icons_fonts },
     { "montserrat", lv_montserrat_fonts },
     { "seg7", lv_seg7_fonts },
-    { "unscii", lv_unscii_fonts},
+    // { "typicons", lv_typicons_fonts },
 #ifdef USE_LVGL_HASPMOTA
     { "robotocondensed", lv_robotocondensed_fonts },
 #endif
+    { "unscii", lv_unscii_fonts},
     { nullptr, nullptr}
   };
 
@@ -573,6 +658,19 @@ extern "C" {
       f.close();
     }
     be_pushstring(vm, fname);
+    be_return(vm);
+  }
+
+  /*********************************************************************************************\
+   * Screenshot in raw format
+  \********************************************************************************************/
+  int lv0_set_paint_cb(bvm *vm);
+  int lv0_set_paint_cb(bvm *vm) {
+    int32_t argc = be_top(vm); // Get the number of arguments
+    if (argc >= 1 && be_iscomptr(vm, 1)) {
+      lv_set_paint_cb(be_tocomptr(vm, 1));
+    }
+    be_pushcomptr(vm, lv_get_paint_cb());
     be_return(vm);
   }
 }

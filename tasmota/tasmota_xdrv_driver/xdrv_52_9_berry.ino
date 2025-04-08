@@ -37,6 +37,7 @@ extern "C" {
 #include "be_vm.h"
 #include "ZipReadFS.h"
 #include "ccronexpr.h"
+#include "berry_custom.h"
 
 extern "C" {
   extern void be_load_custom_libs(bvm *vm);
@@ -175,6 +176,26 @@ int32_t callBerryEventDispatcher(const char *type, const char *cmd, int32_t idx,
   return ret;
 }
 
+// simple wrapper to call `tasmota.<method_name>()`
+static void callBerryTasmotaFunc(const char * method_name) {
+  bvm *vm = berry.vm;
+  if (be_getglobal(vm, "tasmota")) {
+    if (be_getmethod(vm, -1, method_name)) {
+      be_pushvalue(vm, -2); // add instance as first arg
+      BrTimeoutStart();
+      int32_t ret = be_pcall(vm, 1);
+      if (ret != 0) {
+        be_error_pop_all(berry.vm);             // clear Berry stack
+      }
+      BrTimeoutReset();
+      be_pop(vm, 1);
+    }
+    be_pop(vm, 1);  // remove method
+  }
+  be_pop(vm, 1);  // remove instance object
+  be_pop(vm, be_top(vm));   // clean
+}
+
 // Simplified version of event loop. Just call `tasmota.fast_loop()`
 // `every_5ms` is a flag to wait at least 5ms between calss to `tasmota.fast_loop()`
 void callBerryFastLoop(bool every_5ms) {
@@ -190,21 +211,13 @@ void callBerryFastLoop(bool every_5ms) {
   fast_loop_last_call = now;
 
   // TODO - can we make this dereferencing once for all?
-  if (be_getglobal(vm, "tasmota")) {
-    if (be_getmethod(vm, -1, "fast_loop")) {
-      be_pushvalue(vm, -2); // add instance as first arg
-      BrTimeoutStart();
-      int32_t ret = be_pcall(vm, 1);
-      if (ret != 0) {
-        be_error_pop_all(berry.vm);             // clear Berry stack
-      }
-      BrTimeoutReset();
-      be_pop(vm, 1);
-    }
-    be_pop(vm, 1);  // remove method
-  }
-  be_pop(vm, 1);  // remove instance object
-  be_pop(vm, be_top(vm));   // clean
+  callBerryTasmotaFunc("fast_loop");
+}
+
+// call `tasmota.run_immediate()`
+void callBerryRunDeferred(void) {
+  if (nullptr == berry.vm) { return; }
+  callBerryTasmotaFunc("run_deferred");
 }
 
 /*********************************************************************************************\
@@ -298,6 +311,12 @@ void BerryObservability(bvm *vm, int event...) {
         }
       }
       break;
+    case BE_OBS_MALLOC_FAIL:
+      {
+        int32_t vm_usage2 = va_arg(param, int32_t);
+        AddLog(LOG_LEVEL_ERROR, D_LOG_BERRY "*** MEMORY ALLOCATION FAILED *** usage %i bytes", vm_usage2);
+      }
+      break;
     default:
       break;
   }
@@ -376,6 +395,12 @@ void BerryInit(void) {
 
     AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_BERRY "Berry initialized, RAM used %u bytes"), callBerryGC());
     berry_init_ok = true;
+
+    // reinit some specific information
+#ifdef USE_BERRY_LEDS_PANEL
+    // if no WS2812 configured, hide "Leds Panel" download button
+    berry.leds_panel_loaded = !PinUsed(GPIO_WS2812);
+#endif // USE_BERRY_LEDS_PANEL
 
     // we generate a synthetic event `autoexec`
     callBerryEventDispatcher(PSTR("preinit"), nullptr, 0, nullptr);
@@ -776,6 +801,7 @@ void HandleBerryConsole(void)
 // Display Buttons to dynamically load bec files
 void HandleBerryBECLoaderButton(void) {
   bvm * vm = berry.vm;
+  if (vm == NULL) { return; }       // Berry vm is not initialized
 
   for (int32_t i = 0; i < ARRAY_SIZE(BECCode); i++) {
     const BeBECCode_t &bec = BECCode[i];
@@ -874,6 +900,9 @@ bool Xdrv52(uint32_t function)
 
   switch (function) {
     case FUNC_SLEEP_LOOP:
+      if (TasmotaGlobal.berry_deferred_ready) {      // there are immediate functions registered, call them first
+        callBerryRunDeferred();      // call `tasmota.run_immediate()`
+      }
       if (TasmotaGlobal.berry_fast_loop_enabled) {    // call only if enabled at global level
         callBerryFastLoop(true);      // call `tasmota.fast_loop()` optimized for minimal performance impact
       }
@@ -886,17 +915,22 @@ bool Xdrv52(uint32_t function)
         BrLoad("autoexec.be");   // run autoexec.be at first tick, so we know all modules are initialized
         berry.autoexec_done = true;
 
+#ifdef USE_WEBSERVER
         // check if `web_add_handler` was missed, for example because of Berry VM restart
         if (!berry.web_add_handler_done) {
           bool network_up = WifiHasIP();
 #ifdef USE_ETHERNET
           network_up = network_up || EthernetHasIP();
 #endif
-          if (network_up) {       // if network is already up, send a synthetic event to trigger web handlers
+          if (network_up && (Webserver != NULL)) {       // if network is already up, send a synthetic event to trigger web handlers
             callBerryEventDispatcher(PSTR("web_add_handler"), nullptr, 0, nullptr);
             berry.web_add_handler_done = true;
           }
         }
+#endif  // USE_WEBSERVER
+      }
+      if (TasmotaGlobal.berry_deferred_ready) {      // there are immediate functions registered, call them first
+        callBerryRunDeferred();      // call `tasmota.run_immediate()`
       }
       if (TasmotaGlobal.berry_fast_loop_enabled) {    // call only if enabled at global level
         callBerryFastLoop(false);      // call `tasmota.fast_loop()` optimized for minimal performance impact
@@ -936,11 +970,56 @@ bool Xdrv52(uint32_t function)
     case FUNC_SET_DEVICE_POWER:
       result = callBerryEventDispatcher(PSTR("set_power_handler"), nullptr, XdrvMailbox.index, nullptr);
       break;
+    case FUNC_BUTTON_PRESSED:
+      {
+        static uint32_t timer_last_button_sent = 0;
+        // XdrvMailbox.index = button_index;
+        // XdrvMailbox.payload = button;
+        // XdrvMailbox.command_code = Button.last_state[button_index];
+        uint8_t state = (XdrvMailbox.command_code & 0xFF);
+        uint8_t multipress_state = (XdrvMailbox.command_code >> 8) & 0xFF;
+        if ((XdrvMailbox.payload != state) || TimeReached(timer_last_button_sent)) {    // fire event only when state changes
+          timer_last_button_sent = millis() + 1000;     // wait for 1 second
+          result = callBerryEventDispatcher(PSTR("button_pressed"), nullptr, 
+                                                (multipress_state & 0xFF) << 24 | (XdrvMailbox.payload & 0xFF) << 16 | (XdrvMailbox.command_code & 0xFF) << 8 | (XdrvMailbox.index & 0xFF) ,
+                                                nullptr);
+        }
+      }
+      break;
+    case FUNC_BUTTON_MULTI_PRESSED:
+      // XdrvMailbox.index = button_index;
+      // XdrvMailbox.payload = Button.press_counter[button_index];
+      result = callBerryEventDispatcher(PSTR("button_multi_pressed"), nullptr, 
+                                             (XdrvMailbox.payload & 0xFF) << 8 | (XdrvMailbox.index & 0xFF) ,
+                                             nullptr);
+      break;
+    case FUNC_ANY_KEY:
+      // XdrvMailbox.payload = device_save << 24 | key << 16 | state << 8 | device;
+      // key 0 = KEY_BUTTON = button_topic
+      // key 1 = KEY_SWITCH = switch_topic
+      // state 0 = POWER_OFF = off
+      // state 1 = POWER_ON = on
+      // state 2 = POWER_TOGGLE = toggle
+      // state 3 = POWER_HOLD = hold
+      // state 4 = POWER_INCREMENT = button still pressed
+      // state 5 = POWER_INV = button released
+      // state 6 = POWER_CLEAR = button released
+      // state 7 = POWER_RELEASE = button released
+      // state 9 = CLEAR_RETAIN = clear retain flag
+      // state 10 = POWER_DELAYED = button released delayed
+      // Button Multipress
+      // state 10 = SINGLE
+      // state 11 = DOUBLE
+      // state 12 = TRIPLE
+      // state 13 = QUAD
+      // state 14 = PENTA
+      result = callBerryEventDispatcher("any_key", nullptr, XdrvMailbox.payload, nullptr);
+      break;
 #ifdef USE_WEBSERVER
     case FUNC_WEB_ADD_CONSOLE_BUTTON:
       if (XdrvMailbox.index) {
         XdrvMailbox.index++;
-      } else {
+      } else if (berry.vm != NULL) {
         WSContentSend_P(HTTP_BTN_BERRY_CONSOLE);
         HandleBerryBECLoaderButton();               // display buttons to load BEC files
         callBerryEventDispatcher(PSTR("web_add_button"), nullptr, 0, nullptr);
@@ -978,9 +1057,8 @@ bool Xdrv52(uint32_t function)
     case FUNC_JSON_APPEND:
       callBerryEventDispatcher(PSTR("json_append"), nullptr, 0, nullptr);
       break;
-
-    case FUNC_BUTTON_PRESSED:
-      callBerryEventDispatcher(PSTR("button_pressed"), nullptr, 0, nullptr);
+    case FUNC_AFTER_TELEPERIOD:
+      callBerryEventDispatcher(PSTR("after_teleperiod"), nullptr, 0, nullptr);
       break;
 
     case FUNC_ACTIVE:
