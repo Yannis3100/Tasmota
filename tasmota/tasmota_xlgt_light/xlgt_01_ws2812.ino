@@ -16,8 +16,6 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#define USE_LIGHT
-#define USE_WS2812
 
 #if defined(ESP8266) || defined(USE_WS2812_FORCE_NEOPIXELBUS)
 #ifdef USE_LIGHT
