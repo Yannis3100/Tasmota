@@ -1892,7 +1892,8 @@ void LightAnimate(void)
         break;
 #endif
       default:
-        XlgtCall(FUNC_SET_SCHEME);
+        //XlgtCall(FUNC_SET_SCHEME);
+        break;
     }
 
 #ifdef USE_DEVICE_GROUPS
@@ -3444,6 +3445,9 @@ bool Xdrv04(uint32_t function)
           if (LightApplyFade()) {
             LightSetOutputs(Light.fade_cur_10);
           }
+        }
+        if( Light.power ){
+          XlgtCall(FUNC_SET_SCHEME);
         }
 #ifdef USE_LIGHT_ARTNET
         ArtNetLoop();
